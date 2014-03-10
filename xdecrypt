@@ -11,10 +11,9 @@ def main():
     args = parser.parse_args()
 
     with asymmetric.private_key(args.private_key) as ctx, \
-            open(args.output, "w") as output_file, \
+            encoder.open_writer_helper(args.output) as output_file, \
             open(args.input) as input_file:
         print "Preparing to Decrypt"
-        encrypted_symmetric_key = asymmetric.encrypt(ctx, symmetric_key)
         symmetric_iv, encrypted_symmetric_key = encoder.read_header(input_file)
         symmetric_key = asymmetric.decrypt(ctx, encrypted_symmetric_key)
         symmetric.decrypt(symmetric_iv, symmetric_key, input_file, output_file)

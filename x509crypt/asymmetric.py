@@ -9,6 +9,9 @@ openssl = ctypes.CDLL("libssl.so")
 @contextmanager
 def certificate(certificate_path):
     """Load the certificate returning an EVP CTX ready to encrypt."""
+    pkey_ctx = None
+    pkey = None
+    certificate = None
     try:
         certificate_fp = libc.fopen(certificate_path, "r")
         certificate = openssl.PEM_read_X509(certificate_fp, None, None, None)
@@ -19,12 +22,17 @@ def certificate(certificate_path):
         assert pkey_ctx
         yield pkey_ctx
     finally:
-        openssl.EVP_PKEY_CTX_free(pkey_ctx)
-        openssl.EVP_PKEY_free(pkey)
-        openssl.X509_free(certificate)
+        if pkey_ctx is not None:
+            openssl.EVP_PKEY_CTX_free(pkey_ctx)
+        if pkey is not None:
+            openssl.EVP_PKEY_free(pkey)
+        if certificate is not None:
+            openssl.X509_free(certificate)
 
 @contextmanager
 def private_key(key_path):
+    pkey_ctx = None
+    pkey = None
     try:
         key_fp = libc.fopen(key_path, "r")
         pkey = openssl.PEM_read_PrivateKey(key_fp, None, None, None)
@@ -33,8 +41,10 @@ def private_key(key_path):
         assert pkey_ctx
         yield pkey_ctx
     finally:
-        openssl.EVP_PKEY_CTX_free(pkey_ctx)
-        openssl.EVP_PKEY_free(pkey)
+        if pkey_ctx is not None:
+            openssl.EVP_PKEY_CTX_free(pkey_ctx)
+        if pkey is not None:
+            openssl.EVP_PKEY_free(pkey)
 
 def encrypt(pkey_ctx, data):
     """Encrypt some small data under the asymmetric key."""

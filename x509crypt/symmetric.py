@@ -52,7 +52,6 @@ def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     for in_buf in iter(lambda: fp_in.read(4096), ""):
         ret = openssl.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz), 
                                         ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
-        print ret
         assert ret > 0
         fp_out.write(out_buf[:out_sz.value])
     ret = openssl.EVP_DecryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
