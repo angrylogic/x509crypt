@@ -11,7 +11,7 @@ class CryptoTests(unittest.TestCase):
 
     def resource(self, name):
         """Return a test resource asserting it exists."""
-        path = os.path.join(os.path.dirname(__file__), "test", name)
+        path = os.path.join(os.path.dirname(__file__), "test-resources", name)
         self.assertTrue(os.path.exists(path))
         return path
 
