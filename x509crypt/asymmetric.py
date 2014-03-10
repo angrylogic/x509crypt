@@ -10,7 +10,7 @@ openssl = ctypes.CDLL("libssl.so")
 def certificate(certificate_path):
     """Load the certificate returning an EVP CTX ready to encrypt."""
     try:
-        certificate_fp = libc.fopen("test.pem", "r")
+        certificate_fp = libc.fopen(certificate_path, "r")
         certificate = openssl.PEM_read_X509(certificate_fp, None, None, None)
         assert certificate
         pkey = openssl.X509_get_pubkey(certificate)
@@ -26,7 +26,7 @@ def certificate(certificate_path):
 @contextmanager
 def private_key(key_path):
     try:
-        key_fp = libc.fopen("test.key", "r")
+        key_fp = libc.fopen(key_path, "r")
         pkey = openssl.PEM_read_PrivateKey(key_fp, None, None, None)
         assert pkey
         pkey_ctx = openssl.EVP_PKEY_CTX_new(pkey, None)
