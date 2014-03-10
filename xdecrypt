@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import os
 import argparse
 from x509crypt import asymmetric, symmetric, encoder
 
@@ -11,10 +10,9 @@ def main():
     parser.add_argument("output")
     args = parser.parse_args()
 
-    symmetric_iv = os.urandom(16)
-    symmetric_key = os.urandom(256/8)
-
-    with asymmetric.private_key(args.private_key) as ctx, open(args.output, "w") as output_file, open(args.input) as input_file:
+    with asymmetric.private_key(args.private_key) as ctx, \
+            open(args.output, "w") as output_file, \
+            open(args.input) as input_file:
         print "Preparing to Decrypt"
         encrypted_symmetric_key = asymmetric.encrypt(ctx, symmetric_key)
         symmetric_iv, encrypted_symmetric_key = encoder.read_header(input_file)

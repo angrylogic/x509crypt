@@ -14,7 +14,9 @@ def main():
     symmetric_iv = os.urandom(16)
     symmetric_key = os.urandom(256/8)
 
-    with asymmetric.certificate(args.certificate) as ctx, open(args.output, "w") as output_file, open(args.input) as input_file:
+    with asymmetric.certificate(args.certificate) as ctx, \
+            open(args.output, "w") as output_file, \
+            open(args.input) as input_file:
         print "Preparing to encrypt"
         encrypted_symmetric_key = asymmetric.encrypt(ctx, symmetric_key)
         encoder.write_header(output_file, symmetric_iv, encrypted_symmetric_key)
