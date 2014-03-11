@@ -19,6 +19,8 @@ def certificate(certificate_path):
     certificate_ctx = None
     try:
         certificate_fp = LIBC.fopen(certificate_path, "r")
+        if not certificate_fp:
+            raise AsymmetricCryptoError("Failed to open X509 certificate")
         certificate_ctx = LIBSSL.PEM_read_X509(certificate_fp, None, None, None)
         if not certificate_ctx:
             raise AsymmetricCryptoError("Failed reading X509 certificate")
@@ -44,6 +46,8 @@ def private_key(key_path):
     pkey_ctx = None
     try:
         key_fp = LIBC.fopen(key_path, "r")
+        if not key_fp:
+            raise AsymmetricCryptoError("Failed to open private key")
         pkey = LIBSSL.PEM_read_PrivateKey(key_fp, None, None, None)
         if not pkey:
             raise AsymmetricCryptoError("Failed reading private key")

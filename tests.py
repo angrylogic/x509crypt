@@ -31,11 +31,15 @@ class CryptoTests(unittest.TestCase):
         """Test loading a certificate context."""
         with asymmetric.certificate(self.resource("test.pem")) as ectx:
             self.assertTrue(ectx)
+        self.assertRaises(asymmetric.AsymmetricCryptoError,
+                          lambda: asymmetric.certificate("null.pem").__enter__())
 
     def test_load_privatekey(self):
         """Test loading a private key context."""
         with asymmetric.private_key(self.resource("test.key")) as dctx:
             self.assertTrue(dctx)
+        self.assertRaises(asymmetric.AsymmetricCryptoError,
+                          lambda: asymmetric.private_key("null.key").__enter__())
 
     def test_asymmetric_encrypt_decrypt(self):
         """Test encryption and decryption with asymmetric keys."""
