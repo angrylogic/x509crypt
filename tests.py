@@ -2,12 +2,24 @@
 
 import unittest
 import tempfile
+import shutil
 import random
 import os
 
 from x509crypt import asymmetric, symmetric, encoder
 
 class CryptoTests(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+        os.mkdir(self.temp_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def temp_file(self, name):
+        """Return the path to a tempfile for the test."""
+        return os.path.join(self.temp_dir, name)
 
     def resource(self, name):
         """Return a test resource asserting it exists."""
@@ -71,22 +83,22 @@ class CryptoTests(unittest.TestCase):
     def test_open_writer_helper(self):
         """Test open_writer_helper for leaking files."""
         try:
-            self.assertTrue(not os.path.exists("/tmp/SUCCESS.stamp"))
-            with encoder.open_writer_helper("/tmp/SUCCESS.stamp") as handle:
+            self.assertTrue(not os.path.exists(self.temp_file("SUCCESS")))
+            with encoder.open_writer_helper(self.temp_file("SUCCESS")) as handle:
                 pass
-            self.assertTrue(os.path.exists("/tmp/SUCCESS.stamp"))
+            self.assertTrue(os.path.exists(self.temp_file("SUCCESS")))
         finally:
-            if os.path.exists("/tmp/SUCCESS.stamp"):
-                os.unlink("/tmp/SUCCESS.stamp")
+            if os.path.exists(self.temp_file("SUCCESS")):
+                os.unlink(self.temp_file("SUCCESS"))
 
         class TestException(Exception):
             pass
-        self.assertTrue(not os.path.exists("/tmp/FAILURE.stamp"))
+        self.assertTrue(not os.path.exists(self.temp_file("FAILURE")))
         try:
-            with encoder.open_writer_helper("/tmp/FAILURE.stamp") as handle:
+            with encoder.open_writer_helper(self.temp_file("FAILURE")) as handle:
                 raise TestException
         except TestException:
-            self.assertTrue(not os.path.exists("/tmp/FAILURE.stamp"))
+            self.assertTrue(not os.path.exists(self.temp_file("FAILURE")))
 
 if __name__ == "__main__":
     unittest.main()
