@@ -6,6 +6,10 @@ from contextlib import contextmanager
 libc = ctypes.CDLL("libc.so.6")
 openssl = ctypes.CDLL("libssl.so")
 
+class AsymmetricCryptoError(Exception):
+    """Base exception class for errors from the crypto library."""
+    pass
+
 @contextmanager
 def certificate(certificate_path):
     """Load the certificate returning an EVP CTX ready to encrypt."""
@@ -15,11 +19,14 @@ def certificate(certificate_path):
     try:
         certificate_fp = libc.fopen(certificate_path, "r")
         certificate = openssl.PEM_read_X509(certificate_fp, None, None, None)
-        assert certificate
+        if not certificate:
+            raise AsymmetricCryptoError("Failed reading X509 certificate")
         pkey = openssl.X509_get_pubkey(certificate)
-        assert pkey
+        if not pkey:
+            raise AsymmetricCryptoError("Failed extracting public key from certificate")
         pkey_ctx = openssl.EVP_PKEY_CTX_new(pkey, None)
-        assert pkey_ctx
+        if not pkey_ctx:
+            raise AsymmetricCryptoError("Failed setting up context from public key")
         yield pkey_ctx
     finally:
         if pkey_ctx is not None:
@@ -36,9 +43,11 @@ def private_key(key_path):
     try:
         key_fp = libc.fopen(key_path, "r")
         pkey = openssl.PEM_read_PrivateKey(key_fp, None, None, None)
-        assert pkey
+        if not pkey:
+            raise AsymmetricCryptoError("Failed reading private key")
         pkey_ctx = openssl.EVP_PKEY_CTX_new(pkey, None)
-        assert pkey_ctx
+        if not pkey_ctx:
+            raise AsymmetricCryptoError("Failed setting up context from private key")
         yield pkey_ctx
     finally:
         if pkey_ctx is not None:
@@ -50,24 +59,30 @@ def encrypt(pkey_ctx, data):
     """Encrypt some small data under the asymmetric key."""
     input_buffer = ctypes.c_char_p(data)
     input_buffer_size = ctypes.c_int(len(data))
-    assert openssl.EVP_PKEY_encrypt_init(pkey_ctx) == 1
+    if openssl.EVP_PKEY_encrypt_init(pkey_ctx) != 1:
+        raise AsymmetricCryptoError("Failed initializing encryption")
     output_buffer_size = ctypes.c_int()
-    assert openssl.EVP_PKEY_encrypt(pkey_ctx, None, ctypes.byref(output_buffer_size), None, None) == 1
+    if openssl.EVP_PKEY_encrypt(pkey_ctx, None, ctypes.byref(output_buffer_size), None, None) != 1:
+        raise AsymmetricCryptoError("Failed during encryption")
     output_buffer = (ctypes.c_char_p * output_buffer_size.value)()
-    assert openssl.EVP_PKEY_encrypt(pkey_ctx, output_buffer, ctypes.byref(output_buffer_size), 
-                                              input_buffer, input_buffer_size) == 1
+    if openssl.EVP_PKEY_encrypt(pkey_ctx, output_buffer, ctypes.byref(output_buffer_size),
+                                input_buffer, input_buffer_size) != 1:
+        raise AsymmetricCryptoError("Failed during encryption")
     return ctypes.string_at(output_buffer, size=output_buffer_size.value)
 
 def decrypt(pkey_ctx, data):
     """Encrypt some small data under the asymmetric key."""
     input_buffer = ctypes.c_char_p(data)
     input_buffer_size = ctypes.c_int(len(data))
-    assert openssl.EVP_PKEY_decrypt_init(pkey_ctx) == 1
+    if openssl.EVP_PKEY_decrypt_init(pkey_ctx) != 1:
+        raise AsymmetricCryptoError("Failed initializing decryption")
     output_buffer_size = ctypes.c_int()
-    assert openssl.EVP_PKEY_decrypt(pkey_ctx, None, ctypes.byref(output_buffer_size), None, None) == 1
+    if openssl.EVP_PKEY_decrypt(pkey_ctx, None, ctypes.byref(output_buffer_size), None, None) != 1:
+        raise AsymmetricCryptoError("Failed during decryption")
     output_buffer = (ctypes.c_char_p * output_buffer_size.value)()
-    assert openssl.EVP_PKEY_decrypt(pkey_ctx, output_buffer, ctypes.byref(output_buffer_size), 
-                                              input_buffer, input_buffer_size) == 1
+    if openssl.EVP_PKEY_decrypt(pkey_ctx, output_buffer, ctypes.byref(output_buffer_size),
+                                input_buffer, input_buffer_size) != 1:
+        raise AsymmetricCryptoError("Failed during decryption")
     return ctypes.string_at(output_buffer, size=output_buffer_size.value)
 
 if __name__ == "__main__":

@@ -34,7 +34,8 @@ class CryptoTests(unittest.TestCase):
             encrypted_string = asymmetric.encrypt(ectx, test_string)
             decrypted_string = asymmetric.decrypt(dctx, encrypted_string)
             self.assertEquals(decrypted_string, test_string)
-            self.assertRaises(AssertionError, lambda: asymmetric.encrypt(ectx, test_long_string))
+            self.assertRaises(asymmetric.AsymmetricCryptoError,
+                              lambda: asymmetric.encrypt(ectx, test_long_string))
 
     def test_symmetric_encrypt_decrypt(self):
         """Test symmetric encryption."""
