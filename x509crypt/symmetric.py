@@ -1,12 +1,10 @@
 #!/usr/bin/python
 
 import ctypes
-from contextlib import contextmanager
 
-libc = ctypes.CDLL("libc.so.6")
-openssl = ctypes.CDLL("libssl.so")
+LIBSSL = ctypes.CDLL("libssl.so")
 
-class EVP_CIPHER_CTX(ctypes.Structure):
+class EvpCipherCtx(ctypes.Structure):
     _fields_ = [("cipher", ctypes.c_void_p),
                 ("engine", ctypes.c_void_p),
                 ("encrypt", ctypes.c_int),
@@ -24,44 +22,44 @@ class EVP_CIPHER_CTX(ctypes.Structure):
                 ("final", ctypes.c_char * 32)]
 
 class SymmetricCryptoError(Exception):
-    pass
+    """Base exception for errors during symmetric cryptographic operations."""
 
 def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
-    evp_cipher_ctx = EVP_CIPHER_CTX()
-    openssl.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
-    ret = openssl.EVP_EncryptInit(ctypes.byref(evp_cipher_ctx), openssl.EVP_aes_256_ctr(),
-                                  ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
+    evp_cipher_ctx = EvpCipherCtx()
+    LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
+    ret = LIBSSL.EVP_EncryptInit(ctypes.byref(evp_cipher_ctx), LIBSSL.EVP_aes_256_ctr(),
+                                 ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing encryption")
     out_buf = ctypes.create_string_buffer(4096+32)
     out_sz = ctypes.c_int(4096+32)
     for in_buf in iter(lambda: fp_in.read(4096), ""):
-        ret = openssl.EVP_EncryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
-                                        ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
+        ret = LIBSSL.EVP_EncryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
+                                       ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
         if ret <= 0:
             raise SymmetricCryptoError("Failed during encryption update")
         fp_out.write(out_buf[:out_sz.value])
-    ret = openssl.EVP_EncryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
+    ret = LIBSSL.EVP_EncryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
     if ret <= 0:
         raise SymmetricCryptoError("Failed during encryption finalization")
     fp_out.write(out_buf[:out_sz.value])
 
 def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
-    evp_cipher_ctx = EVP_CIPHER_CTX()
-    openssl.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
-    ret = openssl.EVP_DecryptInit(ctypes.byref(evp_cipher_ctx), openssl.EVP_aes_256_ctr(),
-                                  ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
+    evp_cipher_ctx = EvpCipherCtx()
+    LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
+    ret = LIBSSL.EVP_DecryptInit(ctypes.byref(evp_cipher_ctx), LIBSSL.EVP_aes_256_ctr(),
+                                 ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing decryption")
     out_buf = ctypes.create_string_buffer(4096+32)
     out_sz = ctypes.c_int(4096+32)
     for in_buf in iter(lambda: fp_in.read(4096), ""):
-        ret = openssl.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
-                                        ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
+        ret = LIBSSL.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
+                                       ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
         if ret <= 0:
             raise SymmetricCryptoError("Failed during decryption update")
         fp_out.write(out_buf[:out_sz.value])
-    ret = openssl.EVP_DecryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
+    ret = LIBSSL.EVP_DecryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
     if ret <= 0:
         raise SymmetricCryptoError("Faield during decryption finalization")
     fp_out.write(out_buf[:out_sz.value])
