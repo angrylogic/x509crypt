@@ -23,22 +23,27 @@ class EVP_CIPHER_CTX(ctypes.Structure):
                 ("block_mask", ctypes.c_int),
                 ("final", ctypes.c_char * 32)]
 
+class SymmetricCryptoError(Exception):
+    pass
 
 def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     evp_cipher_ctx = EVP_CIPHER_CTX()
     openssl.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = openssl.EVP_EncryptInit(ctypes.byref(evp_cipher_ctx), openssl.EVP_aes_256_ctr(),
                                   ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
-    assert ret > 0
+    if ret <= 0:
+        raise SymmetricCryptoError("Failed initializing encryption")
     out_buf = ctypes.create_string_buffer(4096+32)
     out_sz = ctypes.c_int(4096+32)
     for in_buf in iter(lambda: fp_in.read(4096), ""):
-        ret = openssl.EVP_EncryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz), 
+        ret = openssl.EVP_EncryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
                                         ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
-        assert ret > 0
+        if ret <= 0:
+            raise SymmetricCryptoError("Failed during encryption update")
         fp_out.write(out_buf[:out_sz.value])
     ret = openssl.EVP_EncryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
-    assert ret > 0
+    if ret <= 0:
+        raise SymmetricCryptoError("Failed during encryption finalization")
     fp_out.write(out_buf[:out_sz.value])
 
 def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
@@ -46,14 +51,17 @@ def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     openssl.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = openssl.EVP_DecryptInit(ctypes.byref(evp_cipher_ctx), openssl.EVP_aes_256_ctr(),
                                   ctypes.c_char_p(symmetric_key), ctypes.c_char_p(symmetric_iv))
-    assert ret > 0
+    if ret <= 0:
+        raise SymmetricCryptoError("Failed initializing decryption")
     out_buf = ctypes.create_string_buffer(4096+32)
     out_sz = ctypes.c_int(4096+32)
     for in_buf in iter(lambda: fp_in.read(4096), ""):
-        ret = openssl.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz), 
+        ret = openssl.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
                                         ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
-        assert ret > 0
+        if ret <= 0:
+            raise SymmetricCryptoError("Failed during decryption update")
         fp_out.write(out_buf[:out_sz.value])
     ret = openssl.EVP_DecryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
-    assert ret > 0
+    if ret <= 0:
+        raise SymmetricCryptoError("Faield during decryption finalization")
     fp_out.write(out_buf[:out_sz.value])
