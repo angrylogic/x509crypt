@@ -1,7 +1,7 @@
 # Tasks
 These are areas for possible future development.
 
-* Using aes-256-[gcm][GCM] mode for authentication
+* Using [aes-256-gcm][GCM] mode for authentication
 * Handling encrypted private key files
 * Fetching certificates directly from websites (e.g., ``./xencrypt https://www.google.com ...``)
 
