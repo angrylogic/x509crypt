@@ -46,15 +46,16 @@ def certificate(certificate_path):
             LIBSSL.X509_free(certificate_ctx)
 
 @contextmanager
-def private_key(key_path):
+def private_key(key_path, password=None):
     """Load a private key returnign an EVP CTX ready to decrypt."""
     pkey = None
     pkey_ctx = None
+    password_data = ctypes.c_char_p(password) if password is not None else None
     try:
         key_fp = LIBC.fopen(key_path, "r")
         if not key_fp:
             raise AsymmetricCryptoError("Failed to open private key")
-        pkey = LIBSSL.PEM_read_PrivateKey(key_fp, None, None, None)
+        pkey = LIBSSL.PEM_read_PrivateKey(key_fp, None, None, password_data)
         if not pkey:
             raise AsymmetricCryptoError("Failed reading private key")
         pkey_ctx = LIBSSL.EVP_PKEY_CTX_new(pkey, None)

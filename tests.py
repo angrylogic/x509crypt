@@ -41,6 +41,16 @@ class CryptoTests(unittest.TestCase):
         self.assertRaises(asymmetric.AsymmetricCryptoError,
                           lambda: asymmetric.private_key("null.key").__enter__())
 
+    def test_load_password_privatekey(self):
+        """Test loading a password protected private key."""
+        with asymmetric.private_key(self.resource("test-password.key"), "password") as dctx:
+            self.assertTrue(dctx)
+        self.assertRaises(asymmetric.AsymmetricCryptoError,
+                          lambda: asymmetric.private_key("test-password.key",
+                                                         "incorrect-password").__enter__())
+        self.assertRaises(asymmetric.AsymmetricCryptoError,
+                          lambda: asymmetric.private_key("null.key").__enter__())
+
     def test_asymmetric_encrypt_decrypt(self):
         """Test encryption and decryption with asymmetric keys."""
         test_string = os.urandom(32)

@@ -6,11 +6,12 @@ from x509crypt import asymmetric, symmetric, encoder
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("private_key")
+    parser.add_argument("--password")
     parser.add_argument("input")
     parser.add_argument("output")
     args = parser.parse_args()
 
-    with asymmetric.private_key(args.private_key) as ctx, \
+    with asymmetric.private_key(args.private_key, args.password) as ctx, \
             encoder.open_writer_helper(args.output) as output_file, \
             open(args.input) as input_file:
         print "Preparing to Decrypt"
