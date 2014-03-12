@@ -1,8 +1,14 @@
 #!/usr/bin/python
 
 import ctypes
+import atexit
 
 LIBSSL = ctypes.CDLL("libssl.so")
+try:
+    LIBSSL.OPENSSL_add_all_algorithms_conf()
+except AttributeError:
+    LIBSSL.OPENSSL_add_all_algorithms_noconf()
+atexit.register(lambda: LIBSSL.EVP_cleanup())
 
 class EvpCipherCtx(ctypes.Structure):
     _fields_ = [("cipher", ctypes.c_void_p),

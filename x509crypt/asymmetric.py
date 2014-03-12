@@ -3,10 +3,16 @@
 """Wrapper around OpenSSL asymmetric cryptographic operations."""
 
 import ctypes
+import atexit
 from contextlib import contextmanager
 
 LIBC = ctypes.CDLL("libc.so.6")
 LIBSSL = ctypes.CDLL("libssl.so")
+try:
+    LIBSSL.OPENSSL_add_all_algorithms_conf()
+except AttributeError:
+    LIBSSL.OPENSSL_add_all_algorithms_noconf()
+atexit.register(lambda: LIBSSL.EVP_cleanup())
 
 class AsymmetricCryptoError(Exception):
     """Base exception for errors during asymmetric cryptographic operations."""
