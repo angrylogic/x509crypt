@@ -90,7 +90,7 @@ class AsymmetricContext(object):
         return ctypes.string_at(output_buffer, size=output_buffer_size.value)
 
     def decrypt(self, data):
-        """Encrypt some small data under the asymmetric key."""
+        """Decrypt some small data under the asymmetric key."""
         input_buffer = ctypes.c_char_p(data)
         input_buffer_size = ctypes.c_int(len(data))
         if LIBSSL.EVP_PKEY_decrypt_init(self.context) != 1:
