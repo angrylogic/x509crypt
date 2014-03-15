@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+"""This module provides functions for doing symmetric encryption through
+the OpenSSL EVP API."""
+
 import ctypes
 import atexit
 
@@ -8,9 +11,10 @@ try:
     LIBSSL.OPENSSL_add_all_algorithms_conf()
 except AttributeError:
     LIBSSL.OPENSSL_add_all_algorithms_noconf()
-atexit.register(lambda: LIBSSL.EVP_cleanup())
+atexit.register(LIBSSL.EVP_cleanup)
 
 class EvpCipherCtx(ctypes.Structure):
+    """ctypes wrapper around the openssl EVP_CIPHER_CTX struct"""
     _fields_ = [("cipher", ctypes.c_void_p),
                 ("engine", ctypes.c_void_p),
                 ("encrypt", ctypes.c_int),
@@ -31,6 +35,18 @@ class SymmetricCryptoError(Exception):
     """Base exception for errors during symmetric cryptographic operations."""
 
 def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
+    """Encrypt the contents of fp_in using a symmetric cipher.
+
+    :param symmetric_iv: the encryption initialization vector
+    :type symmetric_iv: str
+    :param symmetric_key: the symmetric encryption key
+    :type symmetric_key: str
+    :param fp_in: the plain text input file
+    :type fp_out: file
+    :param fp_out: the plain text output file
+    :type fp_out: file
+    :raises: SymmetricCryptoError
+    """
     evp_cipher_ctx = EvpCipherCtx()
     LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = LIBSSL.EVP_EncryptInit(ctypes.byref(evp_cipher_ctx), LIBSSL.EVP_aes_256_ctr(),
@@ -52,6 +68,18 @@ def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     LIBSSL.EVP_CIPHER_CTX_cleanup(ctypes.byref(evp_cipher_ctx))
 
 def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
+    """Decrypt the contents of fp_in using a symmetric cipher.
+
+    :param symmetric_iv: the encryption initialization vector
+    :type symmetric_iv: str
+    :param symmetric_key: the symmetric encryption key
+    :type symmetric_key: str
+    :param fp_in: the encrypted input file
+    :type fp_out: file
+    :param fp_out: the plain text output file
+    :type fp_out: file
+    :raises: SymmetricCryptoError
+    """
     evp_cipher_ctx = EvpCipherCtx()
     LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = LIBSSL.EVP_DecryptInit(ctypes.byref(evp_cipher_ctx), LIBSSL.EVP_aes_256_ctr(),

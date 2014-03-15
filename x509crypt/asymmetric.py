@@ -12,19 +12,29 @@ try:
     LIBSSL.OPENSSL_add_all_algorithms_conf()
 except AttributeError:
     LIBSSL.OPENSSL_add_all_algorithms_noconf()
-atexit.register(lambda: LIBSSL.EVP_cleanup())
+atexit.register(LIBSSL.EVP_cleanup)
 
 class AsymmetricCryptoError(Exception):
     """Base exception for errors during asymmetric cryptographic operations."""
 
 class AsymmetricContext(object):
+    """Wrapper around a EVP_PKEY_CTX. This class should not be
+    created directly but rather through the with_certificate and
+    with_private_key context managers which handle setup and cleanup of
+    the context objects."""
+
     def __init__(self, context=None):
         self.context = context
 
     @classmethod
     @contextmanager
     def from_certificate(cls, certificate_path):
-        """Load the certificate returning an EVP CTX ready to encrypt."""
+        """Load the certificate returning an EVP CTX ready to encrypt.
+
+        :param certificate_path: path to PEM encoded X509 certificate
+        :type certificate_path: str
+        :returns: AsymmetricContext -- context for encryption/decryption
+        """
         pkey = None
         pkey_ctx = None
         certificate_ctx = None
@@ -53,7 +63,14 @@ class AsymmetricContext(object):
     @classmethod
     @contextmanager
     def from_private_key(cls, key_path, password=None):
-        """Load a private key returnign an EVP CTX ready to decrypt."""
+        """Load a private key optionally with password.
+
+        :param key_path: the path to the PEM encoded private key
+        :type key_path: str
+        :param password: the optional password for the key
+        :type password: str
+        :returns: AsymmetricContext -- context for encryption/decryption
+        """
         pkey = None
         pkey_ctx = None
         password_data = ctypes.c_char_p(password) if password is not None else None
