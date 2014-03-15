@@ -115,5 +115,9 @@ class CryptoTests(unittest.TestCase):
         except TestException:
             self.assertTrue(not os.path.exists(self.temp_file("FAILURE")))
 
+        # not the best test but at least looking for an exception
+        with encoder.open_writer_helper("-") as handle:
+            handle.write("some test data to stdout")
+
 if __name__ == "__main__":
     unittest.main()

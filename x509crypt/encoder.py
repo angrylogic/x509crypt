@@ -4,7 +4,9 @@
 headers from x509crypt formatted files."""
 
 import os
+import shutil
 import struct
+import sys
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
@@ -17,7 +19,11 @@ def open_writer_helper(final_file_name):
     """Open a writer that will rename on success and cleanup on failure."""
     temp_file = tempfile.NamedTemporaryFile()
     yield temp_file
-    os.link(temp_file.name, final_file_name)
+    if final_file_name == "-":
+        temp_file.seek(0)
+        shutil.copyfileobj(temp_file, sys.stdout)
+    else:
+        os.link(temp_file.name, final_file_name)
 
 def write_header(file_ptr, enc_iv, enc_key):
     """Write out a header to a file with the IV and encrypted symmetric key."""
