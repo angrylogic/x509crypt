@@ -73,12 +73,12 @@ class CryptoTests(unittest.TestCase):
         ifile.seek(0)
 
         efile = tempfile.TemporaryFile()
-        symmetric.encrypt(test_iv, test_key, ifile, efile)
+        authentication_tag = symmetric.encrypt(test_iv, test_key, ifile, efile)
         efile.seek(0)
         ifile.seek(0)
 
         dfile = tempfile.TemporaryFile()
-        symmetric.decrypt(test_iv, test_key, efile, dfile)
+        symmetric.decrypt(test_iv, test_key, authentication_tag, efile, dfile)
         dfile.seek(0)
 
         self.assertEquals(ifile.read(), dfile.read())
@@ -88,11 +88,17 @@ class CryptoTests(unittest.TestCase):
         ifile = tempfile.TemporaryFile()
         key = os.urandom(random.randrange(1024))
         iv = os.urandom(random.randrange(1024))
+        tag = os.urandom(16)
         encoder.write_header(ifile, iv, key)
+        tag_writer = encoder.tag_writer(ifile)
         ifile.seek(0)
+        tag_writer(tag)
+        ifile.seek(0)
+
         header = encoder.read_header(ifile)
         self.assertEquals(header.symmetric_iv, iv)
         self.assertEquals(header.encrypted_symmetric_key, key)
+        self.assertEquals(header.tag, tag)
 
     def test_open_writer_helper(self):
         """Test open_writer_helper for leaking files."""

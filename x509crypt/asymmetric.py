@@ -5,6 +5,8 @@
 import ctypes
 import atexit
 from contextlib import contextmanager
+import sys
+import tempfile
 
 LIBC = ctypes.CDLL("libc.so.6")
 LIBSSL = ctypes.CDLL("libssl.so")
@@ -16,6 +18,13 @@ atexit.register(lambda: LIBSSL.EVP_cleanup())
 
 class AsymmetricCryptoError(Exception):
     """Base exception for errors during asymmetric cryptographic operations."""
+    def __init__(self, message):
+        error_capture = tempfile.TemporaryFile()
+        LIBSSL.ERR_print_errors_fp(LIBC.fdopen(error_capture.fileno(), "w"))
+        error_capture.flush()
+        error_capture.seek(0)
+        message = message + ": " + error_capture.read()
+        Exception.__init__(self, message)
 
 @contextmanager
 def certificate(certificate_path):
