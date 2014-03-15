@@ -3,13 +3,14 @@
 import unittest
 import tempfile
 import shutil
+import subprocess
 import random
 import os
 
 from x509crypt.asymmetric import AsymmetricContext
 from x509crypt import asymmetric, symmetric, encoder
 
-class CryptoTests(unittest.TestCase):
+class TestHelpers(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = os.path.join(os.path.dirname(__file__), "temp")
@@ -27,6 +28,26 @@ class CryptoTests(unittest.TestCase):
         path = os.path.join(os.path.dirname(__file__), "test-resources", name)
         self.assertTrue(os.path.exists(path))
         return path
+
+class CommandLineTests(TestHelpers):
+
+    def test_encrypt_with_certificate(self):
+        # Call with python for virtualenv to function properly.
+        input_file_path = self.temp_file("input")
+        open(input_file_path, "w").write(os.urandom(1024*16))
+        subprocess.check_call(["python", "x509crypt_cmd", "encrypt", self.resource("test.pem"), input_file_path, self.temp_file("output.enc")])
+        subprocess.check_call(["python", "x509crypt_cmd", "decrypt", self.resource("test.key"), self.temp_file("output.enc"), self.temp_file("output.dec")])
+        self.assertEquals(open(self.temp_file("output.dec")).read(), open(input_file_path).read())
+
+    def test_encrypt_with_certificate_and_password(self):
+        # Call with python for virtualenv to function properly.
+        input_file_path = self.temp_file("input")
+        open(input_file_path, "w").write(os.urandom(1024*16))
+        subprocess.check_call(["python", "x509crypt_cmd", "encrypt", self.resource("test-password.pem"), input_file_path, self.temp_file("output.enc")])
+        subprocess.check_call(["python", "x509crypt_cmd", "decrypt", "--password=password", self.resource("test-password.key"), self.temp_file("output.enc"), self.temp_file("output.dec")])
+        self.assertEquals(open(self.temp_file("output.dec")).read(), open(input_file_path).read())
+
+class LibraryTests(TestHelpers):
 
     def test_load_certificate(self):
         """Test loading a certificate context."""
