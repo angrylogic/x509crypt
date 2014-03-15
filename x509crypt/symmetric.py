@@ -49,6 +49,7 @@ def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     if ret <= 0:
         raise SymmetricCryptoError("Failed during encryption finalization")
     fp_out.write(out_buf[:out_sz.value])
+    LIBSSL.EVP_CIPHER_CTX_cleanup(ctypes.byref(evp_cipher_ctx))
 
 def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     evp_cipher_ctx = EvpCipherCtx()
@@ -69,3 +70,4 @@ def decrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     if ret <= 0:
         raise SymmetricCryptoError("Faield during decryption finalization")
     fp_out.write(out_buf[:out_sz.value])
+    LIBSSL.EVP_CIPHER_CTX_cleanup(ctypes.byref(evp_cipher_ctx))

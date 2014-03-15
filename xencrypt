@@ -2,7 +2,8 @@
 
 import os
 import argparse
-from x509crypt import asymmetric, symmetric, encoder
+from x509crypt import symmetric, encoder
+from x509crypt.asymmetric import AsymmetricContext
 
 def main():
     parser = argparse.ArgumentParser()
@@ -14,11 +15,11 @@ def main():
     symmetric_iv = os.urandom(16)
     symmetric_key = os.urandom(256/8)
 
-    with asymmetric.certificate(args.certificate) as ctx, \
+    with AsymmetricContext.from_certificate(args.certificate) as ctx, \
             encoder.open_writer_helper(args.output) as output_file, \
             open(args.input) as input_file:
         print "Preparing to encrypt"
-        encrypted_symmetric_key = asymmetric.encrypt(ctx, symmetric_key)
+        encrypted_symmetric_key = ctx.encrypt(symmetric_key)
         encoder.write_header(output_file, symmetric_iv, encrypted_symmetric_key)
         symmetric.encrypt(symmetric_iv, symmetric_key, input_file, output_file)
 
