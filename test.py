@@ -3,12 +3,14 @@
 import unittest
 import tempfile
 import shutil
+import subprocess
 import random
 import os
 
+from x509crypt.asymmetric import AsymmetricContext
 from x509crypt import asymmetric, symmetric, encoder
 
-class CryptoTests(unittest.TestCase):
+class TestHelpers(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = os.path.join(os.path.dirname(__file__), "temp")
@@ -27,41 +29,61 @@ class CryptoTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
         return path
 
+class CommandLineTests(TestHelpers):
+
+    def test_encrypt_with_certificate(self):
+        # Call with python for virtualenv to function properly.
+        input_file_path = self.temp_file("input")
+        open(input_file_path, "w").write(os.urandom(1024*16))
+        subprocess.check_call(["python", "x509crypt_cmd", "encrypt", self.resource("test.pem"), input_file_path, self.temp_file("output.enc")])
+        subprocess.check_call(["python", "x509crypt_cmd", "decrypt", self.resource("test.key"), self.temp_file("output.enc"), self.temp_file("output.dec")])
+        self.assertEquals(open(self.temp_file("output.dec")).read(), open(input_file_path).read())
+
+    def test_encrypt_with_certificate_and_password(self):
+        # Call with python for virtualenv to function properly.
+        input_file_path = self.temp_file("input")
+        open(input_file_path, "w").write(os.urandom(1024*16))
+        subprocess.check_call(["python", "x509crypt_cmd", "encrypt", self.resource("test-password.pem"), input_file_path, self.temp_file("output.enc")])
+        subprocess.check_call(["python", "x509crypt_cmd", "decrypt", "--password=password", self.resource("test-password.key"), self.temp_file("output.enc"), self.temp_file("output.dec")])
+        self.assertEquals(open(self.temp_file("output.dec")).read(), open(input_file_path).read())
+
+class LibraryTests(TestHelpers):
+
     def test_load_certificate(self):
         """Test loading a certificate context."""
-        with asymmetric.certificate(self.resource("test.pem")) as ectx:
+        with AsymmetricContext.from_certificate(self.resource("test.pem")) as ectx:
             self.assertTrue(ectx)
         self.assertRaises(asymmetric.AsymmetricCryptoError,
-                          lambda: asymmetric.certificate("null.pem").__enter__())
+                          lambda: AsymmetricContext.from_certificate("null.pem").__enter__())
 
     def test_load_privatekey(self):
         """Test loading a private key context."""
-        with asymmetric.private_key(self.resource("test.key")) as dctx:
+        with AsymmetricContext.from_private_key(self.resource("test.key")) as dctx:
             self.assertTrue(dctx)
         self.assertRaises(asymmetric.AsymmetricCryptoError,
-                          lambda: asymmetric.private_key("null.key").__enter__())
+                          lambda: AsymmetricContext.from_private_key("null.key").__enter__())
 
     def test_load_password_privatekey(self):
         """Test loading a password protected private key."""
-        with asymmetric.private_key(self.resource("test-password.key"), "password") as dctx:
+        with AsymmetricContext.from_private_key(self.resource("test-password.key"), "password") as dctx:
             self.assertTrue(dctx)
         self.assertRaises(asymmetric.AsymmetricCryptoError,
-                          lambda: asymmetric.private_key("test-password.key",
+                          lambda: AsymmetricContext.from_private_key("test-password.key",
                                                          "incorrect-password").__enter__())
         self.assertRaises(asymmetric.AsymmetricCryptoError,
-                          lambda: asymmetric.private_key("null.key").__enter__())
+                          lambda: AsymmetricContext.from_private_key("null.key").__enter__())
 
     def test_asymmetric_encrypt_decrypt(self):
         """Test encryption and decryption with asymmetric keys."""
         test_string = os.urandom(32)
         test_long_string = os.urandom(1024)
-        with asymmetric.certificate(self.resource("test.pem")) as ectx, \
-                asymmetric.private_key(self.resource("test.key")) as dctx:
-            encrypted_string = asymmetric.encrypt(ectx, test_string)
-            decrypted_string = asymmetric.decrypt(dctx, encrypted_string)
+        with AsymmetricContext.from_certificate(self.resource("test.pem")) as pub_context, \
+                AsymmetricContext.from_private_key(self.resource("test.key")) as key_context:
+            encrypted_string = pub_context.encrypt(test_string)
+            decrypted_string = key_context.decrypt(encrypted_string)
             self.assertEquals(decrypted_string, test_string)
             self.assertRaises(asymmetric.AsymmetricCryptoError,
-                              lambda: asymmetric.encrypt(ectx, test_long_string))
+                              lambda: pub_context.encrypt(test_long_string))
 
     def test_symmetric_encrypt_decrypt(self):
         """Test symmetric encryption."""
@@ -119,6 +141,10 @@ class CryptoTests(unittest.TestCase):
                 raise TestException
         except TestException:
             self.assertTrue(not os.path.exists(self.temp_file("FAILURE")))
+
+        # not the best test but at least looking for an exception
+        with encoder.open_writer_helper("-") as handle:
+            handle.write("some test data to stdout")
 
 if __name__ == "__main__":
     unittest.main()

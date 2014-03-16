@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+"""This module provides functions for doing symmetric encryption through
+the OpenSSL EVP API."""
+
 import ctypes
 import atexit
 import sys
@@ -20,6 +23,7 @@ except AttributeError:
 atexit.register(LIBSSL.EVP_cleanup)
 
 class EvpCipherCtx(ctypes.Structure):
+    """ctypes wrapper around the openssl EVP_CIPHER_CTX struct"""
     _fields_ = [("cipher", ctypes.c_void_p),
                 ("engine", ctypes.c_void_p),
                 ("encrypt", ctypes.c_int),
@@ -47,6 +51,18 @@ class SymmetricCryptoError(Exception):
         Exception.__init__(self, message)
 
 def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
+    """Encrypt the contents of fp_in using a symmetric cipher.
+
+    :param symmetric_iv: the encryption initialization vector
+    :type symmetric_iv: str
+    :param symmetric_key: the symmetric encryption key
+    :type symmetric_key: str
+    :param fp_in: the plain text input file
+    :type fp_out: file
+    :param fp_out: the plain text output file
+    :type fp_out: file
+    :raises: SymmetricCryptoError
+    """
     evp_cipher_ctx = EvpCipherCtx()
     LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = LIBSSL.EVP_EncryptInit_ex(ctypes.byref(evp_cipher_ctx),
@@ -83,10 +99,24 @@ def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     ret = LIBSSL.EVP_CIPHER_CTX_ctrl(ctypes.byref(evp_cipher_ctx), EVP_CTRL_GCM_GET_TAG, TAG_SIZE, tag_buffer)
     if ret <= 0:
         raise SymmetricCryptoError("Failed during encryption authentication setup")
+    LIBSSL.EVP_CIPHER_CTX_cleanup(ctypes.byref(evp_cipher_ctx))
 
     return tag_buffer.value
 
 def decrypt(symmetric_iv, symmetric_key, authentication_tag, fp_in, fp_out):
+    """Decrypt the contents of fp_in using a symmetric cipher.
+
+    :param symmetric_iv: the encryption initialization vector
+    :type symmetric_iv: str
+    :param symmetric_key: the symmetric encryption key
+    :type symmetric_key: str
+    :param fp_in: the encrypted input file
+    :type fp_out: file
+    :param fp_out: the plain text output file
+    :type fp_out: file
+    :raises: SymmetricCryptoError
+    """
+
     evp_cipher_ctx = EvpCipherCtx()
     LIBSSL.EVP_CIPHER_CTX_init(ctypes.byref(evp_cipher_ctx))
     ret = LIBSSL.EVP_DecryptInit_ex(ctypes.byref(evp_cipher_ctx),
@@ -113,8 +143,7 @@ def decrypt(symmetric_iv, symmetric_key, authentication_tag, fp_in, fp_out):
         ret = LIBSSL.EVP_DecryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
                                        ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
         if ret <= 0:
-            #raise SymmetricCryptoError("Failed during decryption update on round %d" % encryption_round)
-            pass
+            raise SymmetricCryptoError("Failed during decryption update on round %d" % encryption_round)
         fp_out.write(out_buf[:out_sz.value])
 
     # Verify authentication tag from the encryption process
@@ -127,3 +156,4 @@ def decrypt(symmetric_iv, symmetric_key, authentication_tag, fp_in, fp_out):
     if ret <= 0:
         raise SymmetricCryptoError("Faield during decryption finalization")
     fp_out.write(out_buf[:out_sz.value])
+    LIBSSL.EVP_CIPHER_CTX_cleanup(ctypes.byref(evp_cipher_ctx))
