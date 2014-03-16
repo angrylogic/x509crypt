@@ -7,6 +7,7 @@ import ctypes
 import atexit
 import sys
 import tempfile
+import logging
 from x509crypt.encoder import TAG_SIZE
 
 # GCM control constants from evp.h
@@ -71,24 +72,27 @@ def encrypt(symmetric_iv, symmetric_key, fp_in, fp_out):
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing encryption")
 
+    logging.debug("Setting encrypt IV length to %d bytes: %s", len(symmetric_iv), repr(symmetric_iv))
     ret = LIBSSL.EVP_CIPHER_CTX_ctrl(ctypes.byref(evp_cipher_ctx),
                                      EVP_CTRL_GCM_SET_IVLEN,
-                                     len(symmetric_iv), None)
+                                     ctypes.c_int(len(symmetric_iv)), None)
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing encryption")
 
+    logging.debug("Setting encrypt key to %s", repr(symmetric_key))
     ret = LIBSSL.EVP_EncryptInit_ex(ctypes.byref(evp_cipher_ctx), None, None,
                                     ctypes.c_char_p(symmetric_key),
                                     ctypes.c_char_p(symmetric_iv))
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing encryption")
+
     out_buf = ctypes.create_string_buffer(4096+32)
-    out_sz = ctypes.c_int(4096+32)
-    for in_buf in iter(lambda: fp_in.read(4096), ""):
+    for round, in_buf in enumerate(iter(lambda: fp_in.read(4096), "")):
+        out_sz = ctypes.c_int(4096+32)
         ret = LIBSSL.EVP_EncryptUpdate(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz),
                                        ctypes.c_char_p(in_buf), ctypes.c_int(len(in_buf)))
         if ret <= 0:
-            raise SymmetricCryptoError("Failed during encryption update")
+            raise SymmetricCryptoError("Failed during encryption update on round %d" % round)
         fp_out.write(out_buf[:out_sz.value])
     ret = LIBSSL.EVP_EncryptFinal(ctypes.byref(evp_cipher_ctx), out_buf, ctypes.byref(out_sz))
     if ret <= 0:
@@ -110,6 +114,8 @@ def decrypt(symmetric_iv, symmetric_key, authentication_tag, fp_in, fp_out):
     :type symmetric_iv: str
     :param symmetric_key: the symmetric encryption key
     :type symmetric_key: str
+    :param authentication_tag: the authentication tag to verify data
+    :type authentication_tag: str
     :param fp_in: the encrypted input file
     :type fp_out: file
     :param fp_out: the plain text output file
@@ -125,12 +131,14 @@ def decrypt(symmetric_iv, symmetric_key, authentication_tag, fp_in, fp_out):
     if ret <= 0:
         raise SymmetricCryptoError("Failed initializing cipher for decryption")
 
+    logging.debug("Setting decrypt IV length to %d bytes: %s", len(symmetric_iv), repr(symmetric_iv))
     ret = LIBSSL.EVP_CIPHER_CTX_ctrl(ctypes.byref(evp_cipher_ctx),
                                      EVP_CTRL_GCM_SET_IVLEN,
-                                     len(symmetric_iv), None)
+                                     ctypes.c_int(len(symmetric_iv)), None)
     if ret <= 0:
         raise SymmetricCryptoError("Failed setting IV size for decryption")
 
+    logging.debug("Setting decrypt key to %s", repr(symmetric_key))
     ret = LIBSSL.EVP_DecryptInit_ex(ctypes.byref(evp_cipher_ctx), None, None,
                                     ctypes.c_char_p(symmetric_key),
                                     ctypes.c_char_p(symmetric_iv))

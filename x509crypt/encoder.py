@@ -14,7 +14,7 @@ from contextlib import contextmanager
 TAG_SIZE = 16
 
 # pylint: disable-msg=C0103
-FileMetaData = namedtuple("FileMetaData", ("symmetric_iv", "encrypted_symmetric_key", "tag"))
+FileMetaData = namedtuple("FileMetaData", ("symmetric_iv", "encrypted_symmetric_key", "authentication_tag"))
 
 @contextmanager
 def open_writer_helper(final_file_name):
@@ -53,7 +53,7 @@ def read_header(file_ptr):
     key_size = struct.unpack(">I", file_ptr.read(struct.calcsize("I")))[0]
     encrypted_symmetric_key = file_ptr.read(key_size)
     assert len(encrypted_symmetric_key) == key_size
-    tag_size = struct.unpack(">I", file_ptr.read(struct.calcsize("I")))[0]
-    tag = file_ptr.read(tag_size)
+    authentication_tag_size = struct.unpack(">I", file_ptr.read(struct.calcsize("I")))[0]
+    authentication_tag = file_ptr.read(tag_size)
     assert len(tag) == tag_size
-    return FileMetaData(symmetric_iv, encrypted_symmetric_key, tag)
+    return FileMetaData(symmetric_iv, encrypted_symmetric_key, authentication_tag)

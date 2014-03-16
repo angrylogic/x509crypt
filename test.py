@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import subprocess
 import random
+import logging
 import os
 
 from x509crypt.asymmetric import AsymmetricContext
@@ -120,7 +121,7 @@ class LibraryTests(TestHelpers):
         header = encoder.read_header(ifile)
         self.assertEquals(header.symmetric_iv, iv)
         self.assertEquals(header.encrypted_symmetric_key, key)
-        self.assertEquals(header.tag, tag)
+        self.assertEquals(header.authentication_tag, tag)
 
     def test_open_writer_helper(self):
         """Test open_writer_helper for leaking files."""
@@ -147,4 +148,5 @@ class LibraryTests(TestHelpers):
             handle.write("some test data to stdout")
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()
