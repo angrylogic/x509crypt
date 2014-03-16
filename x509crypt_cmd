@@ -12,7 +12,7 @@ Options:
 from docopt import docopt
 from x509crypt.asymmetric import AsymmetricContext
 from x509crypt.symmetric import encrypt, decrypt
-from x509crypt.encoder import write_header, read_header, open_writer_helper
+from x509crypt.encoder import tag_writer, write_header, read_header, open_writer_helper
 from sys import stdout
 from os import urandom
 import logging
@@ -34,12 +34,13 @@ def main():
             symmetric_key = urandom(32)
             encrypted_symmetric_key = asymmetric_context.encrypt(symmetric_key)
             write_header(output_handle, symmetric_iv, encrypted_symmetric_key)
-            encrypt(symmetric_iv, symmetric_key, input_handle, output_handle)
+            authentication_tag_writer = tag_writer(output_handle)
+            authentication_tag_writer(encrypt(symmetric_iv, symmetric_key, input_handle, output_handle))
             logging.info("Wrote encrypted data to %s", "stdout" if args["<output_file>"] == "-" else args["<output_file>"])
         else:
-            symmetric_iv, encrypted_symmetric_key = read_header(input_handle)
+            symmetric_iv, encrypted_symmetric_key, authentication_tag = read_header(input_handle)
             symmetric_key = asymmetric_context.decrypt(encrypted_symmetric_key)
-            decrypt(symmetric_iv, symmetric_key, input_handle, output_handle)
+            decrypt(symmetric_iv, symmetric_key, authentication_tag, input_handle, output_handle)
             logging.info("Wrote decrypted data to %s", "stdout" if args["<output_file>"] == "-" else args["<output_file>"])
 
 if __name__ == "__main__":
